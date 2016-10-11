@@ -30,6 +30,23 @@ void UGrabber::TickComponent( float DeltaTime, ELevelTick TickType, FActorCompon
 {
 	Super::TickComponent( DeltaTime, TickType, ThisTickFunction );
 
+
+	FVector PlayerViewPointLocation;
+	FRotator PlayerViewPointRotation;
+	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(
+		OUT PlayerViewPointLocation,
+		OUT PlayerViewPointRotation
+	);
+
+	// Declare our ReachVector to be used for the RayCast
+	FVector ReachVector = PlayerViewPointRotation.Vector() * Reach;
+	// Determine our endpoint of the RayCast in WorldSpace using the player's position
+	FVector LineTraceEnd = PlayerViewPointLocation + ReachVector;
+
+	if (PhysicsHandle->GrabbedComponent) 
+	{
+		PhysicsHandle->SetTargetLocation(LineTraceEnd);
+	}
 }
 
 /// Find attached physics handle
@@ -66,12 +83,27 @@ void UGrabber::Grab()
 
 	// Try to reach any actors with physics body collision channel set
 	GetFirstPhysicsBodyInReach();
+
+
+	FHitResult HitResult = GetFirstPhysicsBodyInReach();
+	UPrimitiveComponent* ComponentToGrab = HitResult.GetComponent();
+	AActor* ActorHit = HitResult.GetActor();
+	// Attach physics handle to physics body if we can reach it
+	if (ActorHit)
+	{
+		PhysicsHandle->GrabComponent(
+			ComponentToGrab,
+			NAME_None,
+			ComponentToGrab->GetOwner()->GetActorLocation(),
+			true // Allow rotation
+		);
+	}
 }
 
 void UGrabber::Release()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Releasing!"));
-
+	PhysicsHandle->ReleaseComponent();
 }
 
 const FHitResult UGrabber::GetFirstPhysicsBodyInReach()
@@ -107,5 +139,5 @@ const FHitResult UGrabber::GetFirstPhysicsBodyInReach()
 		// UE_LOG(LogTemp, Warning, TEXT("RayCast hit %s"), (*ActorHit->GetName()));
 	}
 
-	return FHitResult();
+	return Hit;
 }
