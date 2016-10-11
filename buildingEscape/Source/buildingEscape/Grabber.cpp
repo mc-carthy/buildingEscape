@@ -20,10 +20,21 @@ UGrabber::UGrabber()
 void UGrabber::BeginPlay()
 {
 	Super::BeginPlay();
+	GetPhysicsHandleComponent();
+	SetupInputComponent();
+}
 
-	UE_LOG(LogTemp, Warning, TEXT("Grabber reporting for duty!"));
-	
-	/// Find attached physics handle
+
+// Called every frame
+void UGrabber::TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction )
+{
+	Super::TickComponent( DeltaTime, TickType, ThisTickFunction );
+
+}
+
+/// Find attached physics handle
+void UGrabber::GetPhysicsHandleComponent()
+{
 	PhysicsHandle = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
 	if (PhysicsHandle)
 	{
@@ -33,11 +44,13 @@ void UGrabber::BeginPlay()
 	{
 		UE_LOG(LogTemp, Error, TEXT("PhysicsHandle missing from %s!"), *GetOwner()->GetName());
 	}
+}
 
+void UGrabber::SetupInputComponent()
+{
 	InputComponent = GetOwner()->FindComponentByClass<UInputComponent>();
 	if (InputComponent)
 	{
-		/// Bind the input axis
 		InputComponent->BindAction("Grab", IE_Pressed, this, &UGrabber::Grab);
 		InputComponent->BindAction("Grab", IE_Released, this, &UGrabber::Release);
 	}
@@ -45,41 +58,38 @@ void UGrabber::BeginPlay()
 	{
 		UE_LOG(LogTemp, Error, TEXT("InputComponent missing from %s!"), *GetOwner()->GetName());
 	}
+}
+
+void UGrabber::Grab()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Grabbing!"));
+
+	// Try to reach any actors with physics body collision channel set
+	GetFirstPhysicsBodyInReach();
+}
+
+void UGrabber::Release()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Releasing!"));
 
 }
 
-
-// Called every frame
-void UGrabber::TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction )
+const FHitResult UGrabber::GetFirstPhysicsBodyInReach()
 {
-	Super::TickComponent( DeltaTime, TickType, ThisTickFunction );
-
 	FVector PlayerViewPointLocation;
 	FRotator PlayerViewPointRotation;
 	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(
-		OUT PlayerViewPointLocation, 
+		OUT PlayerViewPointLocation,
 		OUT PlayerViewPointRotation
 	);
-
-	//UE_LOG(LogTemp, Warning, TEXT("Viewpoint Location: %s Viewpoint Rotation %s"), *PlayerViewPointLocation.ToString(), *PlayerViewPointRotation.ToString());
 
 	// Declare our ReachVector to be used for the RayCast
 	FVector ReachVector = PlayerViewPointRotation.Vector() * Reach;
 	// Determine our endpoint of the RayCast in WorldSpace using the player's position
 	FVector LineTraceEnd = PlayerViewPointLocation + ReachVector;
-	DrawDebugLine(
-		GetWorld(),
-		PlayerViewPointLocation,
-		LineTraceEnd,
-		FColor(255, 0, 0),
-		false,
-		0.0f,
-		0.0f,
-		10.0f
-	);
 
 	/// Set up query parameters
-	FCollisionQueryParams TraceParameters (FName(TEXT("")), false, GetOwner());
+	FCollisionQueryParams TraceParameters(FName(TEXT("")), false, GetOwner());
 
 	/// Raycast out to reach distance
 	FHitResult Hit;
@@ -96,16 +106,6 @@ void UGrabber::TickComponent( float DeltaTime, ELevelTick TickType, FActorCompon
 	{
 		// UE_LOG(LogTemp, Warning, TEXT("RayCast hit %s"), (*ActorHit->GetName()));
 	}
-}
 
-void UGrabber::Grab()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Grabbing!"));
-
-}
-
-void UGrabber::Release()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Releasing!"));
-
+	return FHitResult();
 }
