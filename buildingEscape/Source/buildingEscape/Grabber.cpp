@@ -40,7 +40,9 @@ void UGrabber::TickComponent( float DeltaTime, ELevelTick TickType, FActorCompon
 
 	//UE_LOG(LogTemp, Warning, TEXT("Viewpoint Location: %s Viewpoint Rotation %s"), *PlayerViewPointLocation.ToString(), *PlayerViewPointRotation.ToString());
 
+	// Declare our ReachVector to be used for the RayCast
 	FVector ReachVector = PlayerViewPointRotation.Vector() * Reach;
+	// Determine our endpoint of the RayCast in WorldSpace using the player's position
 	FVector LineTraceEnd = PlayerViewPointLocation + ReachVector;
 	DrawDebugLine(
 		GetWorld(),
@@ -53,5 +55,22 @@ void UGrabber::TickComponent( float DeltaTime, ELevelTick TickType, FActorCompon
 		10.0f
 	);
 
-}
+	/// Set up query parameters
+	FCollisionQueryParams TraceParameters (FName(TEXT("")), false, GetOwner());
 
+	/// Raycast out to reach distance
+	FHitResult Hit;
+	GetWorld()->LineTraceSingleByObjectType(
+		OUT Hit,
+		PlayerViewPointLocation,
+		LineTraceEnd,
+		FCollisionObjectQueryParams(ECollisionChannel::ECC_PhysicsBody),
+		TraceParameters
+	);
+
+	AActor* ActorHit = Hit.GetActor();
+	if (ActorHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RayCast hit %s"), (*ActorHit->GetName()));
+	}
+}
